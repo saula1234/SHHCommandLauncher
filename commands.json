@@ -1,0 +1,1 @@
+[{"name": "\u0428\u043a\u043e\u043b\u044b (oo-dev)", "command": "ssh kulikovai@oo-dev -p22"}, {"name": "\u0428\u043a\u043e\u043b\u044b (Tomcat)", "command": "ssh kulikovai@oo-dev -p22 'sudo cat /etc/default/tomcat-oo'"}, {"name": "\u0421\u0430\u0434\u044b (doo-dev)", "command": "ssh kulikovai@doo-dev -p22"}]
