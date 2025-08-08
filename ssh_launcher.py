@@ -79,13 +79,16 @@ class SSHCommandLauncher:
             group = self.find_group_for_command(selected_item)
             if group:
                 host = group["host"]
-                full_command = f"{host} '{selected_item['command']}'"
+                # Формируем команду с -t для интерактивности
+                full_command = f"{host} -t \"sudo -i bash -c '{selected_item['command']}; exec bash'\""
                 self.execute_ssh_command(full_command)
 
     def execute_ssh_command(self, command):
         """Выполнение SSH-команды в терминале"""
         try:
-            command = command.replace("'", "'\"'\"'")
+            # Логируем команду для отладки
+            print(f"Executing command: {command}")
+
             if os.name == "posix":  # Linux/macOS
                 subprocess.Popen(["x-terminal-emulator", "-e", "bash", "-c", f"{command}; exec bash"])
             elif os.name == "nt":    # Windows
