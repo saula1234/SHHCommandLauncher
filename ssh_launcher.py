@@ -70,7 +70,7 @@ class SSHCommandLauncher:
 
         # Добавляем группы и команды
         for group in self.groups:
-            group_id = self.tree.insert("", "end", text=f"{group['name']}", values=[group['host']], tags=("group",))
+            group_id = self.tree.insert("", "end", text=f"GROUP: {group['name']}", values=[group['host']], tags=("group",))
             for cmd in group["commands"]:
                 self.tree.insert(group_id, "end", text=f"{cmd['name']}", values=[cmd['command']], tags=("command",))
 
@@ -86,7 +86,7 @@ class SSHCommandLauncher:
             return
 
         item = self.tree.item(selected_item)
-        if item["values"]:  # Это группа (у групп есть значение host)
+        if "GROUP:" in item["text"]:  # Это группа
             host = item["values"][0]
             self.execute_ssh_command(host)
         else:  # Это подкоманда
@@ -144,7 +144,7 @@ class SSHCommandLauncher:
             return
 
         item = self.tree.item(selected_item)
-        if item["values"]:  # Это группа (у групп есть значение host)
+        if "GROUP:" in item["text"]:  # Это группа
             self.edit_group(item)
         else:  # Это подкоманда
             group = self.find_group_for_command(item)
@@ -155,7 +155,7 @@ class SSHCommandLauncher:
 
     def edit_group(self, item):
         """Редактирование группы"""
-        group_name = item["text"]
+        group_name = item["text"].replace("GROUP: ", "")
         new_name = simpledialog.askstring("Edit Group", "Enter new group name:", initialvalue=group_name)
         if new_name is None:
             return
@@ -200,9 +200,12 @@ class SSHCommandLauncher:
             return
 
         item = self.tree.item(selected_item)
-        if item["values"]:  # Это группа (у групп есть значение host)
-            group_name = item["text"]
-            self.groups = [g for g in self.groups if g["name"] != group_name]
+        if "GROUP:" in item["text"]:  # Это группа
+            group_name = item["text"].replace("GROUP: ", "")
+            for group in self.groups:
+                if group["name"] == group_name:
+                    self.groups.remove(group)
+                    break
         else:  # Это подкоманда
             group = self.find_group_for_command(item)
             if group:
@@ -222,11 +225,11 @@ class SSHCommandLauncher:
             return
 
         item = self.tree.item(selected_item)
-        if not item["values"]:  # Это подкоманда, а не группа
+        if "GROUP:" not in item["text"]:
             messagebox.showerror("Error", "Selected item is not a group!")
             return
 
-        group_name = item["text"]
+        group_name = item["text"].replace("GROUP: ", "")
         group = next((g for g in self.groups if g["name"] == group_name), None)
         if not group:
             messagebox.showerror("Error", "Failed to find group!")
