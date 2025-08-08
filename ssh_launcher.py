@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog
 import subprocess
 import os
 import json
@@ -35,19 +35,19 @@ class SSHCommandLauncher:
         frame = tk.Frame(self.root)
         frame.pack(pady=10)
 
-        # Заменяем Listbox на Text
-        self.textbox = tk.Text(frame, width=80, height=15, wrap=tk.NONE, font=("Arial", 10))
-        self.textbox.pack(side=tk.LEFT, fill=tk.BOTH)
+        # Создаем Treeview
+        self.tree = ttk.Treeview(frame, columns=("Details"), show="tree")
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Добавляем скроллбар
-        scrollbar = tk.Scrollbar(frame)
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.textbox.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self.textbox.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
 
-        # Настройка тегов для форматирования
-        self.textbox.tag_configure("group_tag", font=("Arial", 12, "bold"), foreground="blue")
-        self.textbox.tag_configure("command_tag", font=("Arial", 10))
+        # Настройка стилей
+        style = ttk.Style()
+        style.configure("Group.Treeview", font=("Arial", 12, "bold"), foreground="blue")
+        style.configure("Command.Treeview", font=("Arial", 10))
 
         # Кнопки
         button_frame = tk.Frame(self.root)
@@ -59,70 +59,49 @@ class SSHCommandLauncher:
         tk.Button(button_frame, text="Удалить", command=self.delete_group).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Добавить комманду", command=self.add_command_to_group).pack(side=tk.LEFT, padx=5)
 
-        self.update_textbox()
+        # Обновляем Treeview
+        self.update_treeview()
 
-    def update_textbox(self):
-        """Обновляем список групп и команд в интерфейсе"""
-        # Временно разрешаем редактирование текстового поля
-        self.textbox.config(state=tk.NORMAL)
-        self.textbox.delete(1.0, tk.END)  # Очищаем текстовое поле
+    def update_treeview(self):
+        """Обновляем Treeview с группами и командами"""
+        # Очищаем Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
+        # Добавляем группы и команды
         for group in self.groups:
-            # Добавляем группу с тегом "group_tag"
-            self.textbox.insert(tk.END, f"{group['name']} → {group['host']}\n", "group_tag")
+            group_id = self.tree.insert("", "end", text=f"GROUP: {group['name']}", values=[group['host']], tags=("group",))
             for cmd in group["commands"]:
-                # Добавляем команды с тегом "command_tag"
-                self.textbox.insert(tk.END, f"  - {cmd['name']} → {cmd['command']}\n", "command_tag")
+                self.tree.insert(group_id, "end", text=f"{cmd['name']}", values=[cmd['command']], tags=("command",))
 
-        # Запрещаем редактирование текстового поля
-        self.textbox.config(state=tk.DISABLED)
+        # Применяем теги для стилей
+        self.tree.tag_configure("group", font=("Arial", 12, "bold"), foreground="blue")
+        self.tree.tag_configure("command", font=("Arial", 10))
 
     def run_command(self):
         """Запуск выбранной команды или группы"""
-        selected_index = self.get_selected_index()
-        if selected_index is None:
+        selected_item = self.tree.selection()
+        if not selected_item:
             messagebox.showerror("Error", "No command or group selected!")
             return
 
-        selected_item = self.get_selected_item(selected_index)
-
-        if "host" in selected_item:  # Это группа
-            host = selected_item["host"]
+        item = self.tree.item(selected_item)
+        if "GROUP:" in item["text"]:  # Это группа
+            host = item["values"][0]
             self.execute_ssh_command(host)
         else:  # Это подкоманда
-            group = self.find_group_for_command(selected_item)
+            group = self.find_group_for_command(item)
             if group:
                 host = group["host"]
-                full_command = f"{host} -t \"sudo -i bash -c '{selected_item['command']}; exec bash'\""
+                full_command = f"{host} -t \"sudo -i bash -c '{item['values'][0]}; exec bash'\""
                 self.execute_ssh_command(full_command)
 
-    def get_selected_index(self):
-        """Получаем индекс выбранной строки"""
-        try:
-            # Получаем текущую позицию курсора
-            index = self.textbox.index(tk.INSERT)
-            line = int(index.split(".")[0])  # Номер строки
-            return line - 1  # Индексация с 0
-        except Exception:
-            return None
-
-    def get_selected_item(self, index):
-        """Возвращает выбранный элемент (группу или подкоманду)"""
+    def find_group_for_command(self, item):
+        """Находим группу, которой принадлежит команда"""
         for group in self.groups:
-            if index == 0:  # Первая строка — это группа
-                return group
-            index -= 1
             for cmd in group["commands"]:
-                if index == 0:
-                    return cmd
-                index -= 1
-        return None
-
-    def find_group_for_command(self, command):
-        """Находит группу, которой принадлежит команда"""
-        for group in self.groups:
-            if command in group["commands"]:
-                return group
+                if cmd["name"] == item["text"] and cmd["command"] == item["values"][0]:
+                    return group
         return None
 
     def load_groups(self):
@@ -154,84 +133,106 @@ class SSHCommandLauncher:
             return
 
         self.groups.append({"name": name, "host": host, "commands": []})
-        self.update_textbox()
+        self.update_treeview()
         self.save_groups()
 
     def edit_item(self):
         """Редактирование выбранной группы или подгруппы"""
-        selected_index = self.get_selected_index()
-        if selected_index is None:
+        selected_item = self.tree.selection()
+        if not selected_item:
             messagebox.showerror("Error", "No item selected!")
             return
 
-        selected_item = self.get_selected_item(selected_index)
-
-        if "host" in selected_item:  # Это группа
-            self.edit_group(selected_item)
-        else:  # Это подгруппа
-            group = self.find_group_for_command(selected_item)
+        item = self.tree.item(selected_item)
+        if "GROUP:" in item["text"]:  # Это группа
+            self.edit_group(item)
+        else:  # Это подкоманда
+            group = self.find_group_for_command(item)
             if group:
-                self.edit_command(group, selected_item)
+                self.edit_command(group, item)
             else:
                 messagebox.showerror("Error", "Failed to find group for the selected command!")
 
-    def edit_group(self, group):
+    def edit_group(self, item):
         """Редактирование группы"""
-        new_name = simpledialog.askstring("Edit Group", "Enter new group name:", initialvalue=group["name"])
+        group_name = item["text"].replace("GROUP: ", "")
+        new_name = simpledialog.askstring("Edit Group", "Enter new group name:", initialvalue=group_name)
         if new_name is None:
             return
 
-        new_host = simpledialog.askstring("Edit Group", "Enter new SSH host:", initialvalue=group["host"])
+        new_host = simpledialog.askstring("Edit Group", "Enter new SSH host:", initialvalue=item["values"][0])
         if new_host is None:
             return
 
-        group["name"] = new_name
-        group["host"] = new_host
-        self.update_textbox()
+        for group in self.groups:
+            if group["name"] == group_name:
+                group["name"] = new_name
+                group["host"] = new_host
+                break
+
+        self.update_treeview()
         self.save_groups()
 
-    def edit_command(self, group, command):
+    def edit_command(self, group, item):
         """Редактирование подгруппы (команды)"""
-        new_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=command["name"])
+        new_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=item["text"])
         if new_name is None:
             return
 
-        new_command = simpledialog.askstring("Edit Command", "Enter new command:", initialvalue=command["command"])
+        new_command = simpledialog.askstring("Edit Command", "Enter new command:", initialvalue=item["values"][0])
         if new_command is None:
             return
 
-        command["name"] = new_name
-        command["command"] = new_command
-        self.update_textbox()
+        for cmd in group["commands"]:
+            if cmd["name"] == item["text"] and cmd["command"] == item["values"][0]:
+                cmd["name"] = new_name
+                cmd["command"] = new_command
+                break
+
+        self.update_treeview()
         self.save_groups()
 
     def delete_group(self):
         """Удаление группы"""
-        selected_index = self.get_selected_index()
-        if selected_index is None:
+        selected_item = self.tree.selection()
+        if not selected_item:
             messagebox.showerror("Error", "No group selected!")
             return
 
-        group = self.get_selected_item(selected_index)
-        if "host" not in group:
-            messagebox.showerror("Error", "Selected item is not a group!")
-            return
+        item = self.tree.item(selected_item)
+        if "GROUP:" in item["text"]:  # Это группа
+            group_name = item["text"].replace("GROUP: ", "")
+            for group in self.groups:
+                if group["name"] == group_name:
+                    self.groups.remove(group)
+                    break
+        else:  # Это подкоманда
+            group = self.find_group_for_command(item)
+            if group:
+                group["commands"] = [
+                    cmd for cmd in group["commands"]
+                    if cmd["name"] != item["text"] or cmd["command"] != item["values"][0]
+                ]
 
-        if messagebox.askyesno("Confirm", "Delete this group and all its commands?"):
-            self.groups.remove(group)
-            self.update_textbox()
-            self.save_groups()
+        self.update_treeview()
+        self.save_groups()
 
     def add_command_to_group(self):
         """Добавление команды в группу"""
-        selected_index = self.get_selected_index()
-        if selected_index is None:
+        selected_item = self.tree.selection()
+        if not selected_item:
             messagebox.showerror("Error", "No group selected!")
             return
 
-        group = self.get_selected_item(selected_index)
-        if "host" not in group:
+        item = self.tree.item(selected_item)
+        if "GROUP:" not in item["text"]:
             messagebox.showerror("Error", "Selected item is not a group!")
+            return
+
+        group_name = item["text"].replace("GROUP: ", "")
+        group = next((g for g in self.groups if g["name"] == group_name), None)
+        if not group:
+            messagebox.showerror("Error", "Failed to find group!")
             return
 
         name = simpledialog.askstring("Add Command", "Enter command name:")
@@ -243,7 +244,7 @@ class SSHCommandLauncher:
             return
 
         group["commands"].append({"name": name, "command": command})
-        self.update_textbox()
+        self.update_treeview()
         self.save_groups()
 
     def execute_ssh_command(self, command):
