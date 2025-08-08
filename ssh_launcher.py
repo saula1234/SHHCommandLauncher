@@ -49,7 +49,7 @@ class SSHCommandLauncher:
 
         tk.Button(button_frame, text="Run", command=self.run_command).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Add Group", command=self.add_group).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Edit Group", command=self.edit_group).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Edit", command=self.edit_item).pack(side=tk.LEFT, padx=5)  # Переименованная кнопка
         tk.Button(button_frame, text="Delete Group", command=self.delete_group).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Add Command", command=self.add_command_to_group).pack(side=tk.LEFT, padx=5)
 
@@ -79,14 +79,12 @@ class SSHCommandLauncher:
             group = self.find_group_for_command(selected_item)
             if group:
                 host = group["host"]
-                # Формируем команду с -t для интерактивности
                 full_command = f"{host} -t \"sudo -i bash -c '{selected_item['command']}; exec bash'\""
                 self.execute_ssh_command(full_command)
 
     def execute_ssh_command(self, command):
         """Выполнение SSH-команды в терминале"""
         try:
-            # Логируем команду для отладки
             print(f"Executing command: {command}")
 
             if os.name == "posix":  # Linux/macOS
@@ -129,18 +127,26 @@ class SSHCommandLauncher:
         self.update_listbox()
         self.save_groups()
 
-    def edit_group(self):
-        """Редактирование группы"""
+    def edit_item(self):
+        """Редактирование выбранной группы или подгруппы"""
         selected_index = self.listbox.curselection()
         if not selected_index:
-            messagebox.showerror("Error", "No group selected!")
+            messagebox.showerror("Error", "No item selected!")
             return
 
-        group = self.get_selected_item(selected_index[0])
-        if "host" not in group:
-            messagebox.showerror("Error", "Selected item is not a group!")
-            return
+        selected_item = self.get_selected_item(selected_index[0])
 
+        if "host" in selected_item:  # Это группа
+            self.edit_group(selected_item)
+        else:  # Это подгруппа
+            group = self.find_group_for_command(selected_item)
+            if group:
+                self.edit_command(group, selected_item)
+            else:
+                messagebox.showerror("Error", "Failed to find group for the selected command!")
+
+    def edit_group(self, group):
+        """Редактирование группы"""
         new_name = simpledialog.askstring("Edit Group", "Enter new group name:", initialvalue=group["name"])
         if new_name is None:
             return
@@ -151,6 +157,21 @@ class SSHCommandLauncher:
 
         group["name"] = new_name
         group["host"] = new_host
+        self.update_listbox()
+        self.save_groups()
+
+    def edit_command(self, group, command):
+        """Редактирование подгруппы (команды)"""
+        new_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=command["name"])
+        if new_name is None:
+            return
+
+        new_command = simpledialog.askstring("Edit Command", "Enter new command:", initialvalue=command["command"])
+        if new_command is None:
+            return
+
+        command["name"] = new_name
+        command["command"] = new_command
         self.update_listbox()
         self.save_groups()
 
