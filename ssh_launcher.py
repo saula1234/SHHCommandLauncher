@@ -7,7 +7,7 @@ import json
 class SSHCommandLauncher:
     def __init__(self, root):
         self.root = root
-        self.root.title("SSH Command Launcher")
+        self.root.title("SSH Мастер")
         self.root.geometry("600x400")
 
         # Список групп (по умолчанию)
@@ -47,11 +47,11 @@ class SSHCommandLauncher:
         button_frame = tk.Frame(self.root)
         button_frame.pack(pady=10)
 
-        tk.Button(button_frame, text="Run", command=self.run_command).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Add Group", command=self.add_group).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Edit", command=self.edit_item).pack(side=tk.LEFT, padx=5)  # Переименованная кнопка
-        tk.Button(button_frame, text="Delete Group", command=self.delete_group).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Add Command", command=self.add_command_to_group).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Открыть", command=self.run_command).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Добавить группу", command=self.add_group).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Редактировать", command=self.edit_item).pack(side=tk.LEFT, padx=5)  # Переименованная кнопка
+        tk.Button(button_frame, text="Удалить", command=self.delete_group).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Добавить комманду", command=self.add_command_to_group).pack(side=tk.LEFT, padx=5)
 
         self.update_listbox()
 
