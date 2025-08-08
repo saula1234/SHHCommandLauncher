@@ -21,6 +21,13 @@ class SSHCommandLauncher:
         # GUI элементы
         self.setup_ui()
 
+        import sys
+        if sys.platform == "win32":
+            self.root.iconbitmap("dnevnik.ico")
+        else:
+            icon = tk.PhotoImage(file="dnevnik.png")
+            self.root.tk.call('wm', 'iconphoto', self.root._w, icon)
+
     def setup_ui(self):
         # Фрейм для списка команд
         frame = tk.Frame(self.root)
