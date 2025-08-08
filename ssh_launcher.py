@@ -4,11 +4,16 @@ import subprocess
 import os
 import json
 
+
 class SSHCommandLauncher:
     def __init__(self, root):
         self.root = root
         self.root.title("SSH Мастер")
-        self.root.geometry("600x400")
+        self.root.geometry("700x500")
+
+        # Настройка весов строк и столбцов для главного окна
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
 
         # Список групп (по умолчанию)
         self.groups = []
@@ -31,17 +36,25 @@ class SSHCommandLauncher:
                 pass  # Если иконка не найдена, игнорируем ошибку
 
     def setup_ui(self):
-        # Фрейм для списка команд
-        frame = tk.Frame(self.root)
-        frame.pack(pady=10)
+        # Главный контейнер с grid
+        main_container = tk.Frame(self.root)
+        main_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        main_container.grid_rowconfigure(0, weight=1)  # Фрейм с деревом будет растягиваться
+        main_container.grid_columnconfigure(0, weight=1)
+
+        # Фрейм для списка команд с grid
+        frame = tk.Frame(main_container)
+        frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
 
         # Создаем Treeview
         self.tree = ttk.Treeview(frame, columns=("Details"), show="tree")
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.tree.grid(row=0, column=0, sticky="nsew")
 
         # Добавляем скроллбар
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar.grid(row=0, column=1, sticky="ns")
         self.tree.configure(yscrollcommand=scrollbar.set)
 
         # Настройка стилей
@@ -49,10 +62,11 @@ class SSHCommandLauncher:
         style.configure("Group.Treeview", font=("Arial", 12, "bold"), foreground="blue")
         style.configure("Command.Treeview", font=("Arial", 10))
 
-        # Кнопки
-        button_frame = tk.Frame(self.root)
-        button_frame.pack(pady=10)
+        # Фрейм для кнопок внизу
+        button_frame = tk.Frame(main_container)
+        button_frame.grid(row=1, column=0, sticky="ew")
 
+        # Кнопки
         tk.Button(button_frame, text="Открыть", command=self.run_command).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Добавить группу", command=self.add_group).pack(side=tk.LEFT, padx=5)
         tk.Button(button_frame, text="Редактировать", command=self.edit_item).pack(side=tk.LEFT, padx=5)
